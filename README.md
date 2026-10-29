@@ -66,8 +66,7 @@ in the dropdown and by notification.
 Toggle it from Hammerspoon (the `hs` CLI works too):
 
 ```lua
-hs.hotkey.bind({}, "f19", function() cyclePrivacy() end)              -- macropad key
-hs.hotkey.bind({"ctrl","alt","cmd"}, "p", function() cyclePrivacy() end)
+hs.hotkey.bind({"ctrl","alt","cmd"}, "p", function() cyclePrivacy() end)  -- macropad key
 ```
 
 The cycle writes the file and refreshes SwiftBar via
