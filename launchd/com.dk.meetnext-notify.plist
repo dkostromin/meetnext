@@ -2,16 +2,26 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <key>Label</key><string>com.dk.meetnext-notify</string>
-  <key>ProgramArguments</key>
-  <array>
-    <string>/opt/homebrew/bin/python3</string>
-    <string>/Users/dk/Documents/meetnext/meetings.py</string>
-    <string>--notify</string>
-  </array>
-  <key>RunAtLoad</key><true/>
-  <key>StartInterval</key><integer>600</integer>
-  <key>StandardOutPath</key><string>/Users/dk/.cache/meetnext/notify.log</string>
-  <key>StandardErrorPath</key><string>/Users/dk/.cache/meetnext/notify.log</string>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>MEETNEXT_TZ</key>
+		<string>Europe/Moscow</string>
+	</dict>
+	<key>Label</key>
+	<string>com.dk.meetnext-notify</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/opt/homebrew/bin/python3</string>
+		<string>/Users/dk/Documents/meetnext/meetings.py</string>
+		<string>--notify</string>
+	</array>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardErrorPath</key>
+	<string>/Users/dk/.cache/meetnext/notify.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/dk/.cache/meetnext/notify.log</string>
+	<key>StartInterval</key>
+	<integer>600</integer>
 </dict>
 </plist>

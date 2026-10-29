@@ -22,6 +22,10 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
+if os.environ.get("MEETNEXT_TZ"):
+    os.environ["TZ"] = os.environ["MEETNEXT_TZ"]
+    time.tzset()
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 CALJSON = os.path.join(HERE, "caljson.js")
 CACHE = os.path.expanduser("~/.cache/meetnext")
@@ -132,6 +136,13 @@ def _ics_unescape(value):
                  .replace("\\,", ",").replace("\\;", ";").replace("\\\\", "\\"))
 
 
+def _source_tz(params):
+    tzid = (params.get("TZID") or "").strip('"')
+    if not tzid:
+        return None
+    return WINDOWS_TZ.get(tzid, tzid)
+
+
 def ics_events(text, calname):
     """Minimal iCalendar reader: VEVENT + RRULE + EXDATE, enough for Google feeds."""
     lines = []
@@ -175,6 +186,7 @@ def ics_events(text, calname):
                 "location": _ics_unescape(props.get("LOCATION", [("", {})])[0][0]) or None,
                 "notes": _ics_unescape(props.get("DESCRIPTION", [("", {})])[0][0]) or None,
                 "url": _ics_unescape(props.get("URL", [("", {})])[0][0]) or None,
+                "tz": _source_tz(start_params),
                 "calendar": calname,
                 "exdates": exdates,
             })
@@ -734,7 +746,12 @@ def render_swiftbar(events):
         if ev is current:
             label = f"● {label} (now)"
         lines.append(f"{label} | href={ev['join']}" if ev.get("join") else label)
-        lines.append(f"-- {ev['start']:%H:%M}–{ev['end']:%H:%M} · {ev['calendar']}")
+        zone = now.tzname() or ""
+        sub = (f"-- {ev['start']:%H:%M}–{ev['end']:%H:%M} {zone}"
+               f" · {ev['start'].astimezone(timezone.utc):%H:%M}Z · {ev['calendar']}")
+        if ev.get("tz"):
+            sub += f" · src {ev['tz']}"
+        lines.append(sub)
         if ev.get("join"):
             lines.append(f"-- Join meeting | href={ev['join']}")
         if ev.get("notes"):
@@ -751,6 +768,7 @@ def render_swiftbar(events):
                 break
     lines += [
         "---",
+        f"Timezone: {now.tzname()} ({os.environ.get('MEETNEXT_TZ') or 'system'}) | size=11 color=#8e8e93",
         "Refresh | refresh=true",
         "Open Calendar | bash=/usr/bin/open param1=-a param2=Calendar terminal=false",
     ]

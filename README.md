@@ -33,6 +33,12 @@ published ICS ──────┘                                   └──>
 
 ## Configuration
 
+`MEETNEXT_TZ` pins the display timezone (`Europe/Moscow`), independent of the
+Mac's system setting; without it the process local zone is used. Every menu
+entry shows the event in that zone, its UTC instant, and — when the source
+provides a `TZID` — the calendar's own timezone (`src America/New_York`). Events
+read through Calendar.app (JXA) expose no timezone, so only local + UTC appear.
+
 `~/.config/meetnext/centium.email` holds the Google account whose export
 `centium_sync.mjs` pulls (or set `MEETNEXT_EMAIL`; `MEETNEXT_AUTHUSER` defaults
 to `2`). `MEETNEXT_FOCUS` is an optional comma-separated list of calendar names
