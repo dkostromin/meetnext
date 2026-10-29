@@ -54,6 +54,26 @@ name = file:///Users/you/.cache/meetnext/centium.ics
 Feeds older than `FEED_STALE_HOURS = 6` put `⚠︎` in the menu bar and are reported
 in the dropdown and by notification.
 
+## Privacy mode
+
+`~/.config/meetnext/privacy` holds one of:
+
+- `full` (or no file) — titles, calendars, join links, notes;
+- `busy` — `16:30 Meeting`, times only, no calendar names, links, notes or
+  warnings; notifications are masked as "Meeting" too;
+- `hidden` — the plugin prints nothing, so the menu bar item disappears.
+
+Toggle it from Hammerspoon (the `hs` CLI works too):
+
+```lua
+hs.hotkey.bind({}, "f19", function() cyclePrivacy() end)              -- macropad key
+hs.hotkey.bind({"ctrl","alt","cmd"}, "p", function() cyclePrivacy() end)
+```
+
+The cycle writes the file and refreshes SwiftBar via
+`swiftbar://refreshplugin?name=meetings.2m.sh`; without that the change lands on
+the next 2-minute tick.
+
 ## Install
 
 1. Copy `meetings.2m.sh` to `~/Library/Application Support/SwiftBar/Plugins/`.

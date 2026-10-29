@@ -32,6 +32,7 @@ CACHE = os.path.expanduser("~/.cache/meetnext")
 EVENTS_CACHE = os.path.join(CACHE, "events.json")
 SERIES_STATE = os.path.join(CACHE, "series_state.json")
 FEEDS_FILE = os.path.expanduser("~/.config/meetnext/feeds.txt")
+PRIVACY_FILE = os.path.expanduser("~/.config/meetnext/privacy")
 NOTIFIED = os.path.join(CACHE, "notified.json")
 FEED_STATE = os.path.join(CACHE, "feed_state.json")
 FEED_STALE_HOURS = 6
@@ -481,15 +482,27 @@ def spawn_refresh():
 
 # ---------- render ----------
 
-def head_line(events, now, stale=False):
+def privacy_mode():
+    """full (default) · busy (no titles, calendars or links) · hidden (no item)."""
+    try:
+        with open(PRIVACY_FILE) as fh:
+            mode = fh.read().strip().lower()
+    except OSError:
+        return "full"
+    return mode if mode in ("busy", "hidden") else "full"
+
+
+def head_line(events, now, stale=False, masked=False):
     flag = "⚠︎ " if stale else ""
     current = next((e for e in events if e["start"] <= now <= e["end"]), None)
     upcoming = [e for e in events if e["start"] > now]
     nxt = upcoming[0] if upcoming else None
+    title = "Busy" if masked else bar_text(current["title"], 24) if current else ""
     if current:
-        return f"{flag}● {bar_text(current['title'], 24)} · {fmt_delta(current['end'] - now)} left"
+        return f"{flag}● {title} · {fmt_delta(current['end'] - now)} left"
     if nxt and nxt["start"] - now <= timedelta(hours=LEAD_HOURS):
-        return f"{flag}▸ {bar_text(nxt['title'], 24)} · {nxt['start']:%H:%M} (in {fmt_delta(nxt['start'] - now)})"
+        label = "Busy" if masked else bar_text(nxt["title"], 24)
+        return f"{flag}▸ {label} · {nxt['start']:%H:%M} (in {fmt_delta(nxt['start'] - now)})"
     if nxt:
         return f"{flag}▸ Quiet · next {nxt['start']:%a %H:%M}"
     return f"{flag}▸ No meetings in 4 days"
@@ -533,6 +546,7 @@ def _seen_notifications():
 
 def notify_due(events):
     """One notification per meeting, LEAD_HOURS before it starts."""
+    masked = privacy_mode() != "full"
     now = datetime.now().astimezone()
     seen = _seen_notifications()
     sent = 0
@@ -543,9 +557,10 @@ def notify_due(events):
         key = f"{ev['title']}|{ev['start'].isoformat()}"
         if key in seen:
             continue
+        message = f"{ev['start']:%H:%M}" if masked else f"{ev['start']:%H:%M} · {ev['calendar']}"
         ok = _post_notification(
-            f"{ev['start']:%H:%M} · {ev['calendar']}",
-            ev["title"][:90],
+            message,
+            "Meeting" if masked else ev["title"][:90],
             f"in {fmt_delta(delta)}",
         )
         if not ok:
@@ -718,11 +733,16 @@ def staleness_warnings(days=7, min_events=20):
 
 
 def render_swiftbar(events):
+    mode = privacy_mode()
+    if mode == "hidden":
+        return ""
+    masked = mode == "busy"
+
     now = datetime.now().astimezone()
     current = next((e for e in events if e["start"] <= now <= e["end"]), None)
     feed_issues = feed_warnings()
-    warnings = staleness_warnings() + feed_issues
-    lines = [head_line(events, now, stale=bool(feed_issues)), "---"]
+    warnings = [] if masked else staleness_warnings() + feed_issues
+    lines = [head_line(events, now, stale=bool(feed_issues) and not masked, masked=masked), "---"]
     for warning in warnings:
         lines.append(warning)
     upcoming = [e for e in events if e["end"] > now]
@@ -742,19 +762,26 @@ def render_swiftbar(events):
             noun = "meeting" if count == 1 else "meetings"
             lines.append(f"{day_label(day, now.date())} · {count} {noun} | size=11 color=#8e8e93")
             shown_day = day
-        label = f"{ev['start']:%H:%M} {ev['title'].replace('|', '·')}"
+        title = "Meeting" if masked else ev["title"].replace("|", "·")
+        label = f"{ev['start']:%H:%M} {title}"
         if ev is current:
             label = f"● {label} (now)"
-        lines.append(f"{label} | href={ev['join']}" if ev.get("join") else label)
+        if masked or not ev.get("join"):
+            lines.append(label)
+        else:
+            lines.append(f"{label} | href={ev['join']}")
         zone = now.tzname() or ""
-        sub = (f"-- {ev['start']:%H:%M}–{ev['end']:%H:%M} {zone}"
-               f" · {ev['start'].astimezone(timezone.utc):%H:%M}Z · {ev['calendar']}")
-        if ev.get("tz"):
-            sub += f" · src {ev['tz']}"
+        if masked:
+            sub = f"-- {ev['start']:%H:%M}–{ev['end']:%H:%M} {zone}"
+        else:
+            sub = (f"-- {ev['start']:%H:%M}–{ev['end']:%H:%M} {zone}"
+                   f" · {ev['start'].astimezone(timezone.utc):%H:%M}Z · {ev['calendar']}")
+            if ev.get("tz"):
+                sub += f" · src {ev['tz']}"
         lines.append(sub)
-        if ev.get("join"):
+        if not masked and ev.get("join"):
             lines.append(f"-- Join meeting | href={ev['join']}")
-        if ev.get("notes"):
+        if not masked and ev.get("notes"):
             for line in ev["notes"].splitlines():
                 line = line.strip()
                 if len(line) < 12 or re.fullmatch(r"[^\w]+", line):
