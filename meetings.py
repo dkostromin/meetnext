@@ -33,6 +33,7 @@ EVENTS_CACHE = os.path.join(CACHE, "events.json")
 SERIES_STATE = os.path.join(CACHE, "series_state.json")
 FEEDS_FILE = os.path.expanduser("~/.config/meetnext/feeds.txt")
 PRIVACY_FILE = os.path.expanduser("~/.config/meetnext/privacy")
+REINTERPRET_FILE = os.path.expanduser("~/.config/meetnext/reinterpret.txt")
 NOTIFIED = os.path.join(CACHE, "notified.json")
 FEED_STATE = os.path.join(CACHE, "feed_state.json")
 FEED_STALE_HOURS = 6
@@ -297,6 +298,49 @@ def refresh_one_series():
     save_json(SERIES_STATE, state)
 
 
+def reinterpret_rules():
+    """calendar substring -> zone whose wall clock its timestamps really mean."""
+    rules = []
+    try:
+        with open(REINTERPRET_FILE) as fh:
+            for line in fh:
+                line = line.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                name, zone = line.split("=", 1)
+                try:
+                    rules.append((name.strip().lower(), ZoneInfo(zone.strip())))
+                except (KeyError, ValueError):
+                    continue
+    except OSError:
+        pass
+    return rules
+
+
+def reinterpret_events(events):
+    """Floating events follow the calendar's own zone; re-anchor to the display zone."""
+    rules = reinterpret_rules()
+    if not rules:
+        return events
+    local = datetime.now().astimezone().tzinfo
+    out = []
+    for ev in events:
+        cal = (ev.get("calendar") or "").lower()
+        zone = next((z for name, z in rules if name in cal), None)
+        if zone is None:
+            out.append(ev)
+            continue
+        copy = dict(ev)
+        for key in ("start", "end"):
+            try:
+                wall = parse_dt(ev[key]).astimezone(zone)
+            except (KeyError, ValueError):
+                continue
+            copy[key] = wall.replace(tzinfo=local).isoformat()
+        out.append(copy)
+    return out
+
+
 def collect():
     win_start = datetime.now().astimezone() - timedelta(hours=1)
     win_end = datetime.now().astimezone() + timedelta(hours=WINDOW_HOURS)
@@ -305,6 +349,7 @@ def collect():
     for entry in load_state().values():
         pooled.extend(dedupe_events(entry.get("events") or []))
     pooled = dedupe_events(pooled)
+    pooled = reinterpret_events(pooled)
 
     rows = []
     for ev in pooled:

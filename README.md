@@ -39,6 +39,16 @@ entry shows the event in that zone, its UTC instant, and — when the source
 provides a `TZID` — the calendar's own timezone (`src America/New_York`). Events
 read through Calendar.app (JXA) expose no timezone, so only local + UTC appear.
 
+`~/.config/meetnext/reinterpret.txt` handles calendars whose stored zone is
+not the one the events mean. A floating event follows its calendar's timezone,
+so changing that setting silently moves every event; a rule re-anchors the wall
+clock to the display zone:
+
+```
+# calendar substring = zone the timestamps really belong to
+dkostromin@bostonsd.com = Asia/Shanghai
+```
+
 `~/.config/meetnext/centium.email` holds the Google account whose export
 `centium_sync.mjs` pulls (or set `MEETNEXT_EMAIL`; `MEETNEXT_AUTHUSER` defaults
 to `2`). `MEETNEXT_FOCUS` is an optional comma-separated list of calendar names
