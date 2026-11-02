@@ -299,7 +299,7 @@ def refresh_one_series():
 
 
 def reinterpret_rules():
-    """calendar substring -> zone whose wall clock its timestamps really mean."""
+    """calendar substring -> timedelta its stored timestamps are off by."""
     rules = []
     try:
         with open(REINTERPRET_FILE) as fh:
@@ -307,22 +307,29 @@ def reinterpret_rules():
                 line = line.strip()
                 if not line or line.startswith("#") or "=" not in line:
                     continue
-                name, zone = line.split("=", 1)
-                try:
-                    rules.append((name.strip().lower(), ZoneInfo(zone.strip())))
-                except (KeyError, ValueError):
+                name, value = line.split("=", 1)
+                value = value.strip()
+                m = re.fullmatch(r"([+-])(\d+)(?:m|min|h)?", value)
+                if not m:
                     continue
+                minutes = int(m.group(2)) * (60 if value.endswith("h") else 1)
+                delta = timedelta(minutes=minutes if m.group(1) == "+" else -minutes)
+                rules.append((name.strip().lower(), delta))
     except OSError:
         pass
     return rules
 
 
 def reinterpret_events(events):
-    """Floating events follow the calendar's own zone; re-anchor to the display zone."""
+    """Re-resolve a floating event's wall clock in its source zone.
+
+    A calendar that fails to apply a DST switch keeps the previous UTC offset,
+    so the instant is an hour off. Taking the wall clock and localising it again
+    in the source zone picks up the current offset and fixes the drift.
+    """
     rules = reinterpret_rules()
     if not rules:
         return events
-    local = datetime.now().astimezone().tzinfo
     out = []
     for ev in events:
         cal = (ev.get("calendar") or "").lower()
@@ -333,10 +340,9 @@ def reinterpret_events(events):
         copy = dict(ev)
         for key in ("start", "end"):
             try:
-                wall = parse_dt(ev[key]).astimezone(zone)
+                copy[key] = (parse_dt(ev[key]) + zone).isoformat()
             except (KeyError, ValueError):
                 continue
-            copy[key] = wall.replace(tzinfo=local).isoformat()
         out.append(copy)
     return out
 

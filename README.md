@@ -39,15 +39,18 @@ entry shows the event in that zone, its UTC instant, and — when the source
 provides a `TZID` — the calendar's own timezone (`src America/New_York`). Events
 read through Calendar.app (JXA) expose no timezone, so only local + UTC appear.
 
-`~/.config/meetnext/reinterpret.txt` handles calendars whose stored zone is
-not the one the events mean. A floating event follows its calendar's timezone,
-so changing that setting silently moves every event; a rule re-anchors the wall
-clock to the display zone:
+`~/.config/meetnext/reinterpret.txt` corrects a calendar whose stored
+timestamps are off by a fixed amount — typically because the source failed to
+apply a DST switch (macOS CalDAV keeps the old UTC offset, Google shows the
+right time). Format:
 
 ```
-# calendar substring = zone the timestamps really belong to
-dkostromin@bostonsd.com = Asia/Shanghai
+# calendar substring = ±minutes (or +1h)
+dkostromin@bostonsd.com = +60
 ```
+
+Re-check the rule after the next DST change; remove the line once the source
+stores the right instants again.
 
 `~/.config/meetnext/centium.email` holds the Google account whose export
 `centium_sync.mjs` pulls (or set `MEETNEXT_EMAIL`; `MEETNEXT_AUTHUSER` defaults
