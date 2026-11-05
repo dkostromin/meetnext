@@ -847,13 +847,11 @@ def render_swiftbar(events):
     lines += [
         "---",
         f"Timezone: {now.tzname()} ({os.environ.get('MEETNEXT_TZ') or 'system'}) | size=11 color=#8e8e93",
-        "About meetnext",
-        f"-- script: {os.path.basename(os.path.abspath(__file__))}",
-        f"-- path: {os.path.abspath(__file__)}",
-        f"-- config: {os.path.dirname(FEEDS_FILE)}",
-        f"-- cache: {CACHE}",
-        "-- github.com/dkostromin/meetnext | href=https://github.com/dkostromin/meetnext",
-        f"-- Show script in Finder | bash=/usr/bin/open param1=-R param2={os.path.abspath(__file__)} terminal=false",
+        f"meetnext · {os.path.basename(os.path.abspath(__file__))} | size=11 color=#8e8e93",
+        f"{os.path.abspath(__file__).replace(os.path.expanduser('~'), '~')} | size=11 color=#8e8e93",
+        f"config {os.path.dirname(FEEDS_FILE).replace(os.path.expanduser('~'), '~')} · cache {CACHE.replace(os.path.expanduser('~'), '~')} | size=11 color=#8e8e93",
+        "Show script in Finder | " + f"bash=/usr/bin/open param1=-R param2={os.path.abspath(__file__)} terminal=false",
+        "Repository | href=https://github.com/dkostromin/meetnext",
         "Refresh | refresh=true",
         "Open Calendar | bash=/usr/bin/open param1=-a param2=Calendar terminal=false",
     ]
