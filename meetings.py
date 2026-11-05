@@ -847,7 +847,7 @@ def render_swiftbar(events):
     lines += [
         "---",
         f"Timezone: {now.tzname()} ({os.environ.get('MEETNEXT_TZ') or 'system'}) | size=11 color=#8e8e93",
-        "About meetnext | size=11",
+        "About meetnext",
         f"-- script: {os.path.basename(os.path.abspath(__file__))}",
         f"-- path: {os.path.abspath(__file__)}",
         f"-- config: {os.path.dirname(FEEDS_FILE)}",
