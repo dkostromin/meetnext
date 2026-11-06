@@ -325,12 +325,20 @@ def reinterpret_rules():
                     continue
                 name, value = line.split("=", 1)
                 value = value.strip()
+                cutoff = None
+                if "@" in value:
+                    value, stamp = value.split("@", 1)
+                    try:
+                        cutoff = datetime.fromisoformat(stamp.strip()).astimezone()
+                    except ValueError:
+                        cutoff = None
+                    value = value.strip()
                 m = re.fullmatch(r"([+-])(\d+)(?:m|min|h)?", value)
                 if not m:
                     continue
                 minutes = int(m.group(2)) * (60 if value.endswith("h") else 1)
                 delta = timedelta(minutes=minutes if m.group(1) == "+" else -minutes)
-                rules.append((name.strip().lower(), delta))
+                rules.append((name.strip().lower(), delta, cutoff))
     except OSError:
         pass
     return rules
@@ -349,10 +357,18 @@ def reinterpret_events(events):
     out = []
     for ev in events:
         cal = (ev.get("calendar") or "").lower()
-        zone = next((z for name, z in rules if name in cal), None)
-        if zone is None:
+        rule = next((r for r in rules if r[0] in cal), None)
+        if rule is None:
             out.append(ev)
             continue
+        _, zone, cutoff = rule
+        if cutoff is not None and (ev.get("stamp") or ""):
+            try:
+                if parse_dt(ev["stamp"]) >= cutoff:
+                    out.append(ev)
+                    continue
+            except ValueError:
+                pass
         copy = dict(ev)
         for key in ("start", "end"):
             try:
@@ -439,15 +455,21 @@ def occurrences(ev, win_start, win_end):
     limit = min(win_end, until) if until else win_end
 
     out = []
-    # BYDAY is authored in the calendar's own zone, but JXA only gives us the
-    # instant. Expanding in UTC keeps the original weekday; expanding in local
-    # time shifts events that cross midnight (US evening -> MSK next morning).
-    ref = start.astimezone(timezone.utc)
+    # Expand in the event's own zone when the feed gives us one: that keeps
+    # both the authored weekday and DST shifts right. JXA only exposes the
+    # instant, so those events fall back to UTC (local expansion would move
+    # US-evening events a day earlier for a +03 display zone).
+    try:
+        ref_zone = ZoneInfo(ev["tz"]) if ev.get("tz") else timezone.utc
+    except (KeyError, ValueError):
+        ref_zone = timezone.utc
+    ref = start.astimezone(ref_zone)
+    limit_ref = limit.astimezone(ref_zone)
     if freq == "WEEKLY":
         week = ref - timedelta(days=ref.weekday())
         for step in range(0, 520, interval):
             base = week + timedelta(weeks=step)
-            if base > limit.astimezone(timezone.utc):
+            if base > limit_ref:
                 break
             days = byday or [list(DAYS)[ref.weekday()]]
             for code in days:

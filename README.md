@@ -45,12 +45,13 @@ apply a DST switch (macOS CalDAV keeps the old UTC offset, Google shows the
 right time). Format:
 
 ```
-# calendar substring = ±minutes (or +1h)
-dkostromin@bostonsd.com = +60
+# calendar substring = ±minutes (or +1h) [@ YYYY-MM-DD]
+dkostromin@bostonsd.com = +60 @ 2026-11-01
 ```
 
-Re-check the rule after the next DST change; remove the line once the source
-stores the right instants again.
+The optional `@ date` applies the shift only to events **last modified before**
+that date, so a series that has already re-synced is left alone while a stale
+master still gets corrected. Re-check the rule after the next DST change.
 
 `~/.config/meetnext/centium.email` holds the Google account whose export
 `centium_sync.mjs` pulls (or set `MEETNEXT_EMAIL`; `MEETNEXT_AUTHUSER` defaults
