@@ -50,6 +50,7 @@ function run(argv) {
           end: e.endDate().toISOString(),
           allDay: !!e.alldayEvent(),
           recurrence: e.recurrence() || null,
+          status: e.status() || null,
           location: e.location() || null,
           notes: e.description() || null,
           url: e.url() ? String(e.url()) : null,

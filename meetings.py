@@ -34,6 +34,7 @@ SERIES_STATE = os.path.join(CACHE, "series_state.json")
 FEEDS_FILE = os.path.expanduser("~/.config/meetnext/feeds.txt")
 PRIVACY_FILE = os.path.expanduser("~/.config/meetnext/privacy")
 REINTERPRET_FILE = os.path.expanduser("~/.config/meetnext/reinterpret.txt")
+IGNORE_FILE = os.path.expanduser("~/.config/meetnext/ignore.txt")
 NOTIFIED = os.path.join(CACHE, "notified.json")
 FEED_STATE = os.path.join(CACHE, "feed_state.json")
 FEED_STALE_HOURS = 6
@@ -298,6 +299,21 @@ def refresh_one_series():
     save_json(SERIES_STATE, state)
 
 
+def ignore_rules():
+    """Titles to hide — for series the source still serves after cancellation."""
+    try:
+        with open(IGNORE_FILE) as fh:
+            return [line.strip().lower() for line in fh
+                    if line.strip() and not line.strip().startswith("#")]
+    except OSError:
+        return []
+
+
+def is_ignored(ev):
+    title = (ev.get("title") or "").lower()
+    return any(rule in title for rule in ignore_rules())
+
+
 def reinterpret_rules():
     """calendar substring -> timedelta its stored timestamps are off by."""
     rules = []
@@ -355,6 +371,8 @@ def collect():
     for entry in load_state().values():
         pooled.extend(dedupe_events(entry.get("events") or []))
     pooled = dedupe_events(pooled)
+    pooled = [ev for ev in pooled
+              if ev.get("status") != "canceled" and not is_ignored(ev)]
     pooled = reinterpret_events(pooled)
 
     rows = []

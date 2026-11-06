@@ -67,6 +67,11 @@ name = file:///Users/you/.cache/meetnext/centium.ics
 Feeds older than `FEED_STALE_HOURS = 6` put `⚠︎` in the menu bar and are reported
 in the dropdown and by notification.
 
+`~/.config/meetnext/ignore.txt` hides events whose title contains one of the
+listed strings (case-insensitive). Use it for a series the source still serves
+after the organiser cancelled it — macOS CalDAV can keep such a master for
+months. Cancelled events (`status = canceled`) are dropped automatically.
+
 ## Privacy mode
 
 `~/.config/meetnext/privacy` holds one of:
